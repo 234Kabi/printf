@@ -1,77 +1,184 @@
-#include <stdio.h>
-#include <stdarg.h>
-#include <main.h>
+#include "main.h"
 
-void print_binary(unsigned int num) {
-    if (num > 1) {
-        print_binary(num / 2);
-    }
-    putchar('0' + (num % 2));
+/**
+ * print_pointer - Prints the value of a pointer variable
+ * @types: List a of arguments
+ * @buffer: Buffer array to handle print
+ * @flags:  Calculates active flags
+ * @width: get width
+ * @precision: Precision specification
+ * @size: Size specifier
+ * Return: Number of chars printed.
+ */
+int print_pointer(va_list types, char buffer[],
+	int flags, int width, int precision, int size)
+{
+	char extra_c = 0, padd = ' ';
+	int ind = BUFF_SIZE - 2, length = 2, padd_start = 1; /* length=2, for '0x' */
+	unsigned long num_addrs;
+	char map_to[] = "0123456789abcdef";
+	void *addrs = va_arg(types, void *);
+
+	UNUSED(width);
+	UNUSED(size);
+
+	if (addrs == NULL)
+		return (write(1, "(nil)", 5));
+
+	buffer[BUFF_SIZE - 1] = '\0';
+	UNUSED(precision);
+
+	num_addrs = (unsigned long)addrs;
+
+	while (num_addrs > 0)
+	{
+		buffer[ind--] = map_to[num_addrs % 16];
+		num_addrs /= 16;
+		length++;
+	}
+
+	if ((flags & F_ZERO) && !(flags & F_MINUS))
+		padd = '0';
+	if (flags & F_PLUS)
+		extra_c = '+', length++;
+	else if (flags & F_SPACE)
+		extra_c = ' ', length++;
+
+	ind++;
+
+	/*return (write(1, &buffer[i], BUFF_SIZE - i - 1));*/
+	return (write_pointer(buffer, ind, length,
+		width, flags, padd, extra_c, padd_start));
 }
 
-int _printf(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
+/**
+ * print_non_printable - Prints ascii codes in hexa of non printable chars
+ * @types: Lista of arguments
+ * @buffer: Buffer array to handle print
+ * @flags:  Calculates active flags
+ * @width: get width
+ * @precision: Precision specification
+ * @size: Size specifier
+ * Return: Number of chars printed
+ */
+int print_non_printable(va_list types, char buffer[],
+	int flags, int width, int precision, int size)
+{
+	int i = 0, offset = 0;
+	char *str = va_arg(types, char *);
 
-    int chars_printed = 0;
-    const char *ptr = format;
+	UNUSED(flags);
+	UNUSED(width);
+	UNUSED(precision);
+	UNUSED(size);
 
-    while (*ptr != '\0') {
-        if (*ptr == '%') {
-            ptr++;  // Move past '%'
-            
-            if (*ptr == '\0') {
-                // Reached end of format string
-                break;
-            }
-            
-            if (*ptr == 'c') {
-                // Print a character
-                char c = va_arg(args, int);
-                putchar(c);
-                chars_printed++;
-            } else if (*ptr == 's') {
-                // Print a string
-                char *s = va_arg(args, char *);
-                fputs(s, stdout);
-                chars_printed += strlen(s);
-            } else if (*ptr == 'd' || *ptr == 'i') {
-                // Print an integer
-                int num = va_arg(args, int);
-                printf("%d", num);
-                chars_printed += snprintf(NULL, 0, "%d", num);  // Calculate printed characters
-            } else if (*ptr == 'b') {
-                // Print an unsigned integer in binary
-                unsigned int num = va_arg(args, unsigned int);
-                print_binary(num);
-                chars_printed += snprintf(NULL, 0, "%u", num);  // Calculate printed characters
-            } else if (*ptr == '%') {
-                // Print a literal '%'
-                putchar('%');
-                chars_printed++;
-            } else {
-                // Unknown conversion specifier
-                putchar('%');  // Print the previous '%' character
-                chars_printed++;
-                putchar(*ptr);  // Print the unknown character
-                chars_printed++;
-            }
-        } else {
-            // Print regular characters
-            putchar(*ptr);
-            chars_printed++;
-        }
-        
-        ptr++;  // Move to the next character
-    }
+	if (str == NULL)
+		return (write(1, "(null)", 6));
 
-    va_end(args);
-    return chars_printed;
+	while (str[i] != '\0')
+	{
+		if (is_printable(str[i]))
+			buffer[i + offset] = str[i];
+		else
+			offset += append_hexa_code(str[i], buffer, i + offset);
+
+		i++;
+	}
+
+	buffer[i + offset] = '\0';
+
+	return (write(1, buffer, i + offset));
 }
 
-int main() {
-    _printf("Binary of 42: %b\n", 42);
-    _printf("Binary of 255: %b\n", 255);
-    
-    return 0;
+/**
+ * print_reverse - Prints reverse string.
+ * @types: Lista of arguments
+ * @buffer: Buffer array to handle print
+ * @flags:  Calculates active flags
+ * @width: get width
+ * @precision: Precision specification
+ * @size: Size specifier
+ * Return: Numbers of chars printed
+ */
+
+int print_reverse(va_list types, char buffer[],
+	int flags, int width, int precision, int size)
+{
+	char *str;
+	int i, count = 0;
+
+	UNUSED(buffer);
+	UNUSED(flags);
+	UNUSED(width);
+	UNUSED(size);
+
+	str = va_arg(types, char *);
+
+	if (str == NULL)
+	{
+		UNUSED(precision);
+
+		str = ")Null(";
+	}
+	for (i = 0; str[i]; i++)
+		;
+
+	for (i = i - 1; i >= 0; i--)
+	{
+		char z = str[i];
+
+		write(1, &z, 1);
+		count++;
+	}
+	return (count);
+}
+/**
+ * print_rot13string - Print a string in rot13.
+ * @types: Lista of arguments
+ * @buffer: Buffer array to handle print
+ * @flags:  Calculates active flags
+ * @width: get width
+ * @precision: Precision specification
+ * @size: Size specifier
+ * Return: Numbers of chars printed
+ */
+int print_rot13string(va_list types, char buffer[],
+	int flags, int width, int precision, int size)
+{
+	char x;
+	char *str;
+	unsigned int i, j;
+	int count = 0;
+	char in[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+	char out[] = "NOPQRSTUVWXYZABCDEFGHIJKLMnopqrstuvwxyzabcdefghijklm";
+
+	str = va_arg(types, char *);
+	UNUSED(buffer);
+	UNUSED(flags);
+	UNUSED(width);
+	UNUSED(precision);
+	UNUSED(size);
+
+	if (str == NULL)
+		str = "(AHYY)";
+	for (i = 0; str[i]; i++)
+	{
+		for (j = 0; in[j]; j++)
+		{
+			if (in[j] == str[i])
+			{
+				x = out[j];
+				write(1, &x, 1);
+				count++;
+				break;
+			}
+		}
+		if (!in[j])
+		{
+			x = str[i];
+			write(1, &x, 1);
+			count++;
+		}
+	}
+	return (count);
 }

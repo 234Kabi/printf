@@ -1,3 +1,8 @@
+0x11. C - printf team project
+
+
+
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
@@ -96,6 +101,12 @@ int _printf(const char *format, ...) {
                     }
                     s++;
                 }
+            } else if (*ptr == 'p') {
+                // Print a pointer in hexadecimal format
+                void *ptr_value = va_arg(args, void *);
+                int len = snprintf(buf_ptr, BUFFER_SIZE - (buf_ptr - buffer), "%p", ptr_value);
+                buf_ptr += len;
+                chars_printed += len;
             } else if (*ptr == '%') {
                 // Print a literal '%'
                 *buf_ptr++ = '%';
@@ -126,13 +137,11 @@ int _printf(const char *format, ...) {
 }
 
 int main() {
+    int num = 42;
+    int *ptr = &num;
+    
     _printf("Decimal: %d\n", 42);
-    _printf("Unsigned decimal: %u\n", 255);
-    _printf("Octal: %o\n", 123);
-    _printf("Lowercase hexadecimal: %x\n", 255);
-    _printf("Uppercase hexadecimal: %X\n", 255);
-    _printf("Binary of 42: %b\n", 42);
-    _printf("String with non-printable characters: %S\n", "Hello\x01World\x7F");
+    _printf("Pointer: %p\n", (void *)ptr);
     
     return 0;
 }
