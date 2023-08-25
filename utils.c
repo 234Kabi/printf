@@ -1,86 +1,142 @@
 #include "main.h"
+#include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
+#include <unistd.h>
 
-/**
- * is_printable - Evaluates if a char is printable
- * @c: Char to be evaluated.
- *
- * Return: 1 if c is printable, 0 otherwise
- */
-int is_printable(char c)
-{
-	if (c >= 32 && c < 127)
-		return (1);
+#define BUFFER_SIZE 1024
 
-	return (0);
+void print_binary(unsigned int num) {
+    if (num > 1) {
+        print_binary(num / 2);
+    }
+    putchar('0' + (num % 2));
 }
 
-/**
- * append_hexa_code - Append ascci in hexadecimal code to buffer
- * @buffer: Array of chars.
- * @i: Index at which to start appending.
- * @ascii_code: ASSCI CODE.
- * Return: Always 3
- */
-int append_hexa_code(char ascii_code, char buffer[], int i)
-{
-	char map_to[] = "0123456789ABCDEF";
-	/* The hexa format code is always 2 digits long */
-	if (ascii_code < 0)
-		ascii_code *= -1;
+int _printf(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
 
-	buffer[i++] = '\\';
-	buffer[i++] = 'x';
+    int chars_printed = 0;
+    char buffer[BUFFER_SIZE];
+    char *buf_ptr = buffer;
 
-	buffer[i++] = map_to[ascii_code / 16];
-	buffer[i] = map_to[ascii_code % 16];
+    const char *ptr = format;
 
-	return (3);
+    while (*ptr != '\0') {
+        if (buf_ptr - buffer >= BUFFER_SIZE - 1) {
+            // Buffer is full, write its content to stdout
+            *buf_ptr = '\0';  // Null-terminate the buffer
+            fputs(buffer, stdout);
+            chars_printed += buf_ptr - buffer;
+            buf_ptr = buffer;
+        }
+
+        if (*ptr == '%') {
+            ptr++;  // Move past '%'
+            
+            if (*ptr == '\0') {
+                // Reached end of format string
+                break;
+            }
+            
+            if (*ptr == 'c') {
+                // Print a character
+                char c = va_arg(args, int);
+                *buf_ptr++ = c;
+                chars_printed++;
+            } else if (*ptr == 's') {
+                // Print a string
+                char *s = va_arg(args, char *);
+                int len = strlen(s);
+                strncpy(buf_ptr, s, BUFFER_SIZE - (buf_ptr - buffer) - 1);
+                buf_ptr += len;
+                chars_printed += len;
+            } else if (*ptr == 'd' || *ptr == 'i') {
+                // Print a signed integer
+                int num = va_arg(args, int);
+                int len = snprintf(buf_ptr, BUFFER_SIZE - (buf_ptr - buffer), "%d", num);
+                buf_ptr += len;
+                chars_printed += len;
+            } else if (*ptr == 'u') {
+                // Print an unsigned integer in decimal format
+                unsigned int num = va_arg(args, unsigned int);
+                int len = snprintf(buf_ptr, BUFFER_SIZE - (buf_ptr - buffer), "%u", num);
+                buf_ptr += len;
+                chars_printed += len;
+            } else if (*ptr == 'o') {
+                // Print an unsigned integer in octal format
+                unsigned int num = va_arg(args, unsigned int);
+                int len = snprintf(buf_ptr, BUFFER_SIZE - (buf_ptr - buffer), "%o", num);
+                buf_ptr += len;
+                chars_printed += len;
+            } else if (*ptr == 'x') {
+                // Print an unsigned integer in lowercase hexadecimal format
+                unsigned int num = va_arg(args, unsigned int);
+                int len = snprintf(buf_ptr, BUFFER_SIZE - (buf_ptr - buffer), "%x", num);
+                buf_ptr += len;
+                chars_printed += len;
+            } else if (*ptr == 'X') {
+                // Print an unsigned integer in uppercase hexadecimal format
+                unsigned int num = va_arg(args, unsigned int);
+                int len = snprintf(buf_ptr, BUFFER_SIZE - (buf_ptr - buffer), "%X", num);
+                buf_ptr += len;
+                chars_printed += len;
+            } else if (*ptr == 'S') {
+                // Print a string with non-printable characters escaped
+                char *s = va_arg(args, char *);
+                while (*s != '\0') {
+                    if (*s >= 32 && *s < 127) {
+                        *buf_ptr++ = *s;
+                        chars_printed++;
+                    } else {
+                        int len = snprintf(buf_ptr, BUFFER_SIZE - (buf_ptr - buffer), "\\x%02X", (unsigned char)(*s));
+                        buf_ptr += len;
+                        chars_printed += len;
+                    }
+                    s++;
+                }
+            } else if (*ptr == 'p') {
+                // Print a pointer in hexadecimal format
+                void *ptr_value = va_arg(args, void *);
+                int len = snprintf(buf_ptr, BUFFER_SIZE - (buf_ptr - buffer), "%p", ptr_value);
+                buf_ptr += len;
+                chars_printed += len;
+            } else if (*ptr == '%') {
+                // Print a literal '%'
+                *buf_ptr++ = '%';
+                chars_printed++;
+            } else {
+                // Unknown conversion specifier
+                *buf_ptr++ = '%';  // Print the previous '%' character
+                chars_printed++;
+                *buf_ptr++ = *ptr;  // Print the unknown character
+                chars_printed++;
+            }
+        } else {
+            // Copy regular characters to the buffer
+            *buf_ptr++ = *ptr;
+            chars_printed++;
+        }
+        
+        ptr++;  // Move to the next character
+    }
+
+    // Flush the remaining content of the buffer to stdout
+    *buf_ptr = '\0';  // Null-terminate the buffer
+    fputs(buffer, stdout);
+    chars_printed += buf_ptr - buffer;
+
+    va_end(args);
+    return chars_printed;
 }
 
-/**
- * is_digit - Verifies if a char is a digit
- * @c: Char to be evaluated
- *
- * Return: 1 if c is a digit, 0 otherwise
- */
-int is_digit(char c)
-{
-	if (c >= '0' && c <= '9')
-		return (1);
-
-	return (0);
-}
-
-/**
- * convert_size_number - Casts a number to the specified size
- * @num: Number to be casted.
- * @size: Number indicating the type to be casted.
- *
- * Return: Casted value of num
- */
-long int convert_size_number(long int num, int size)
-{
-	if (size == S_LONG)
-		return (num);
-	else if (size == S_SHORT)
-		return ((short)num);
-
-	return ((int)num);
-}
-
-/**
- * convert_size_unsgnd - Casts a number to the specified size
- * @num: Number to be casted
- * @size: Number indicating the type to be casted
- *
- * Return: Casted value of num
- */
-long int convert_size_unsgnd(unsigned long int num, int size)
-{
-	if (size == S_LONG)
-		return (num);
-	else if (size == S_SHORT)
-		return ((unsigned short)num);
-
-	return ((unsigned int)num);
+int main() {
+    int num = 42;
+    int *ptr = &num;
+    
+    _printf("Decimal: %d\n", 42);
+    _printf("Pointer: %p\n", (void *)ptr);
+    
+    return 0;
 }

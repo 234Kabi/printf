@@ -11,39 +11,67 @@
  * @size: Size specifier
  * Return: 1 or 2;
  */
-int handle_print(const char *fmt, int *ind, va_list list, char buffer[],
-	int flags, int width, int precision, int size)
-{
-	int i, unknow_len = 0, printed_chars = -1;
-	fmt_t fmt_types[] = {
-		{'c', print_char}, {'s', print_string}, {'%', print_percent},
-		{'i', print_int}, {'d', print_int}, {'b', print_binary},
-		{'u', print_unsigned}, {'o', print_octal}, {'x', print_hexadecimal},
-		{'X', print_hexa_upper}, {'p', print_pointer}, {'S', print_non_printable},
-		{'r', print_reverse}, {'R', print_rot13string}, {'\0', NULL}
-	};
-	for (i = 0; fmt_types[i].fmt != '\0'; i++)
-		if (fmt[*ind] == fmt_types[i].fmt)
-			return (fmt_types[i].fn(list, buffer, flags, width, precision, size));
+int _printf(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
 
-	if (fmt_types[i].fmt == '\0')
-	{
-		if (fmt[*ind] == '\0')
-			return (-1);
-		unknow_len += write(1, "%%", 1);
-		if (fmt[*ind - 1] == ' ')
-			unknow_len += write(1, " ", 1);
-		else if (width)
-		{
-			--(*ind);
-			while (fmt[*ind] != ' ' && fmt[*ind] != '%')
-				--(*ind);
-			if (fmt[*ind] == ' ')
-				--(*ind);
-			return (1);
-		}
-		unknow_len += write(1, &fmt[*ind], 1);
-		return (unknow_len);
-	}
-	return (printed_chars);
+    int chars_printed = 0;
+    const char *ptr = format;
+
+    while (*ptr != '\0') {
+        if (*ptr == '%') {
+            ptr++;  // Move past '%'
+            
+            if (*ptr == '\0') {
+                // Reached end of format string
+                break;
+            }
+            
+            if (*ptr == 'c') {
+                // Print a character
+                char c = va_arg(args, int);
+                putchar(c);
+                chars_printed++;
+            } else if (*ptr == 's') {
+                // Print a string
+                char *s = va_arg(args, char *);
+                fputs(s, stdout);
+                chars_printed += strlen(s);
+            } else if (*ptr == 'd' || *ptr == 'i') {
+                // Print an integer
+                int num = va_arg(args, int);
+                printf("%d", num);
+                chars_printed += snprintf(NULL, 0, "%d", num);  // Calculate printed characters
+            } else if (*ptr == '%') {
+                // Print a literal '%'
+                putchar('%');
+                chars_printed++;
+            } else {
+                // Unknown conversion specifier
+                putchar('%');  // Print the previous '%' character
+                chars_printed++;
+                putchar(*ptr);  // Print the unknown character
+                chars_printed++;
+            }
+        } else {
+            // Print regular characters
+            putchar(*ptr);
+            chars_printed++;
+        }
+        
+        ptr++;  // Move to the next character
+    }
+
+    va_end(args);
+    return chars_printed;
+}
+
+int main() {
+    _printf("Hello, %s!\n", "world");
+    _printf("The character is %c\n", 'A');
+    _printf("This is a percent sign: %%\n");
+    _printf("The number is %d\n", 42);
+    _printf("Another number: %i\n", -123);
+    
+    return 0;
 }
